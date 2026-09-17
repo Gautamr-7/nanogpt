@@ -1820,25 +1820,7 @@ vocab_size numbers
 
 **That's the entire GPT.**
 
-And one thing I strongly recommend for your next revision: **don't reread this passively.** Take a blank sheet and try to recreate the shape flow from memory:
 
-```text
-(B,T)
- ↓
-(B,T,C)
- ↓
-Q/K/V
- ↓
-(B,T,head_size)
- ↓
-(B,T,T)
- ↓
-(B,T,head_size)
- ↓
-(B,T,C)
- ↓
-(B,T,4C)
- ↓
 (B,T,C)
  ↓
 (B,T,vocab_size)
