@@ -1,34 +1,6 @@
 # nanogpt
 
-Absolutely. Let's turn **your exact code** into a revision sheet. The goal is that later you can look at this and reconstruct the whole GPT without memorizing lines.
 
-One important thing first: **there is one bug in your current code**:
-
-```python
-wei = q @ k.transpose(-2, -1) * head_size ** -0.5
-```
-
-`head_size` is not defined inside `Head.forward()`. Store it in `self.head_size` or use `k.size(-1)`.
-
-I would write:
-
-```python
-self.head_size = head_size
-...
-wei = q @ k.transpose(-2, -1) * self.head_size ** -0.5
-```
-
-Also, your comment:
-
-```python
-v = self.value(x)  # (B,T,C)
-```
-
-is technically wrong. It is:
-
-```text
-(B, T, head_size)
-```
 
 With your settings:
 
