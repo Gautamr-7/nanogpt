@@ -1,8 +1,46 @@
-# nanogpt
+# NanoGPT — Transformer Language Model from Scratch
 
+A small GPT-style language model implemented in PyTorch to understand the core components behind modern Transformer-based language models.
 
+## What I Implemented
 
-With your settings:
+- Character-level tokenization
+- Token and positional embeddings
+- Causal self-attention
+- Multi-head self-attention
+- Query, Key, and Value projections
+- Causal masking
+- Feed-forward networks
+- Residual connections
+- Layer normalization
+- Autoregressive text generation
+- Training and validation loss estimation
+
+## Architecture
+
+```text
+Input Tokens
+     ↓
+Token + Positional Embeddings
+     ↓
+Transformer Blocks
+ ┌─────────────────────┐
+ │ LayerNorm            │
+ │ Multi-Head Attention │
+ │ Residual Connection  │
+ │ LayerNorm            │
+ │ Feed-Forward Network │
+ │ Residual Connection  │
+ └─────────────────────┘
+     ↓
+Final LayerNorm
+     ↓
+Linear Language Model Head
+     ↓
+Next-Token Probabilities
+```
+#IN DEPTH EXPLANATION
+
 
 ```text
 n_embd = 64
