@@ -42,11 +42,11 @@ with open('input.txt', 'r', encoding='utf-8') as f:
 # Character-level tokenizer
 # -----------------------------
 
-chars = sorted(list(set(text)))
+chars = sorted(list(set(text)))  #all characters
 vocab_size = len(chars)
 
-stoi = {ch: i for i, ch in enumerate(chars)}
-itos = {i: ch for i, ch in enumerate(chars)}
+stoi = {ch: i for i, ch in enumerate(chars)}  #string to integer
+itos = {i: ch for i, ch in enumerate(chars)}    
 
 encode = lambda s: [stoi[c] for c in s]  # encoder: take a string, output a list of integers
 decode = lambda l: ''.join([itos[i] for i in l])  # decoder: take a list of integers, output a string
@@ -56,7 +56,7 @@ decode = lambda l: ''.join([itos[i] for i in l])  # decoder: take a list of inte
 # Train / validation split
 # -----------------------------
 
-data = torch.tensor(encode(text), dtype=torch.long)
+data = torch.tensor(encode(text), dtype=torch.long)  #all strings in text are now numbers
 
 n = int(0.9 * len(data))
 
@@ -106,21 +106,21 @@ class Head(nn.Module):
     def __init__(self, head_size):
         super().__init__()
 
-        self.key = nn.Linear(n_embd, head_size, bias=False)
-        self.query = nn.Linear(n_embd, head_size, bias=False)
-        self.value = nn.Linear(n_embd, head_size, bias=False)
+        self.key = nn.Linear(n_embd, head_size, bias=False)   #WHAT INFO DO I CONTAIN
+        self.query = nn.Linear(n_embd, head_size, bias=False)   #WHAT DO I WANT
+        self.value = nn.Linear(n_embd, head_size, bias=False)   #HOW MUCH OF VALUE TO TAKE FROM EACH
 
-        self.register_buffer(
-            'tril',
+        self.register_buffer(                 #register_buffer-->Store this tensor as part of the module, but don't treat it as a trainable parameter.
+            'tril',                           #tril is triangular lower
             torch.tril(torch.ones(block_size, block_size))
         )
 
         self.dropout = nn.Dropout(dropout)
         
     def forward(self, x):
-        B, T, C = x.shape
-
-        k = self.key(x)
+        B, T, C = x.shape  #batch,token,n_emb
+                                #The maximum is: T ≤ block_size
+        k = self.key(x)  
         q = self.query(x)
 
         # compute attention scores
@@ -129,7 +129,7 @@ class Head(nn.Module):
         # causal mask: don't allow tokens to look into the future
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
 
-        wei = F.softmax(wei, dim=-1)
+        wei = F.softmax(wei, dim=-1)   #softmax across last dimension ie C(emb)
         wei = self.dropout(wei)
         # weighted aggregation of values
         v = self.value(x)  # (B,T,head_size)
@@ -139,23 +139,33 @@ class Head(nn.Module):
 # -----------------------------
 # Multihead Attention ie parallel processing single head attentions
 # -----------------------------
-   
+#In the multi-head attention:
+
+#Each Head produces an output of shape (B, T, head_size).
+#You concatenate the num_heads heads along the last dimension:Pythonout = torch.cat([h(x) for h in self.heads], dim=-1)Because num_heads * head_size == n_embd, this gives you a tensor of shape (B, T, n_embd).
+#self.proj = nn.Linear(n_embd, n_embd) is then applied to this concatenated result.
+#Simply concatenating them is not enough — the model needs a learned linear transformation that can mix the information coming from all the heads.
+#This is exactly analogous to the final linear layer after the attention scores in the original Transformer paper (the W^O matrix).
+
+
+
 class MultiheadAttention(nn.Module):
 
     def __init__(self,num_heads,head_size):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])  #Every head receives ALL 64 numbers
-        self.proj=nn.Linear(n_embd,n_embd)
-        self.dropout=nn.Dropout(dropout)
+        self.proj=nn.Linear(n_embd,n_embd)  #the final layer after concating all individual heads
+        self.dropout=nn.Dropout(dropout)  #adding dropout
 
     def forward(self,x):
-        out = torch.cat([h(x) for h in self.heads],dim=-1)
+        out = torch.cat([h(x) for h in self.heads],dim=-1)   #concating across last dim ie features
         out=self.dropout(self.proj(out))
         return out
     
 # -----------------------------
 # Feed ForwarD Netwrok
 # -----------------------------
+#his consists of two linear transformations with a ReLU activation in between
 
 class FeedForward(nn.Module):
      """ a simple linear layer followed by a non-linearity """
@@ -163,7 +173,7 @@ class FeedForward(nn.Module):
      def __init__(self,n_embd):
          super().__init__()
          self.net=nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
+            nn.Linear(n_embd, 4 * n_embd),  #The dimensionality of input and output is dmodel = 512, and the inner-layer has dimensionality df f = 2048.
             nn.ReLU(),
             nn.Linear(4 * n_embd, n_embd),
             nn.Dropout(dropout),
@@ -179,17 +189,20 @@ class FeedForward(nn.Module):
 
 class Block(nn.Module):
     """ Transformer block: communication followed by computation """
+
     def __init__(self,n_embd,n_head):
         # n_embd: embedding dimension, n_head: the number of heads we'd like
+
         super().__init__()
-        head_size=n_embd // n_head
+
+        head_size=n_embd // n_head   #64/4=16
         self.sa = MultiheadAttention(n_head,head_size)
         self.ffwd=FeedForward(n_embd)
         self.ln1=nn.LayerNorm(n_embd)
         self.ln2=nn.LayerNorm(n_embd)
 
-    def forward(self,x):
-        x = x + self.sa(self.ln1(x))
+    def forward(self,x):  #RESIDUAL 
+        x = x + self.sa(self.ln1(x))   #prelayer norm
         x = x + self.ffwd(self.ln2(x))
         return x
 
@@ -202,17 +215,23 @@ class BigramLanguageModel(nn.Module):
     def __init__(self,vocab_size):
         super().__init__()
         # each token directly reads off the logits for the next token from a lookup table
+
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
+
         # Converts each token ID → n_embd-dimensional representation
         # e.g. vocab_size=65, n_embd=32 → each character becomes a 32-D vector
 
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
+
         # Gives each position (0,1,2,...,block_size-1) its own n_embd vector
         # Token embedding = WHAT the token is; positional embedding = WHERE the token is
 
         self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
+
         self.ln_f = nn.LayerNorm(n_embd) # final layer norm
-        self.lm_head = nn.Linear(n_embd, vocab_size)
+
+        self.lm_head = nn.Linear(n_embd, vocab_size)  #convert emb to vocab size ie next char
+        
         # takes token representations and mixes information from relevant previous tokens
             
 
@@ -260,7 +279,7 @@ class BigramLanguageModel(nn.Module):
             # Get predictions
             logits, loss = self(idx_cond)
 
-            # Focus only on the last time step
+            # Focus only on the last token
             logits = logits[:, -1, :]
 
             # Convert logits to probabilities
@@ -284,7 +303,7 @@ m = model.to(device)
 print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
 
 # -----------------------------
-# Optimizer
+# Optimizer  -- Adam
 # -----------------------------
 
 optimizer = torch.optim.AdamW(
@@ -330,5 +349,4 @@ print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))
 #Training: batches are used to update the weights.
 
 #Evaluation: batches are used to estimate the model's average loss without processing the entire dataset.
-
 
