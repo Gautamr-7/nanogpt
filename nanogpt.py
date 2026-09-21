@@ -106,6 +106,7 @@ class Head(nn.Module):
     def __init__(self, head_size):
         super().__init__()
 
+        self.head_size=head_size
         self.key = nn.Linear(n_embd, head_size, bias=False)   #WHAT INFO DO I CONTAIN
         self.query = nn.Linear(n_embd, head_size, bias=False)   #WHAT DO I WANT
         self.value = nn.Linear(n_embd, head_size, bias=False)   #HOW MUCH OF VALUE TO TAKE FROM EACH
@@ -124,7 +125,7 @@ class Head(nn.Module):
         q = self.query(x)
 
         # compute attention scores
-        wei = q @ k.transpose(-2, -1) * head_size **-0.5 #acc to paper we also divide by root of head_size dk   ,also transpose of k's t and c ie -2 -1
+        wei = q @ k.transpose(-2, -1) * self.head_size **-0.5 #acc to paper we also divide by root of head_size dk   ,also transpose of k's t and c ie -2 -1
 
         # causal mask: don't allow tokens to look into the future
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
